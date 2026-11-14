@@ -1,0 +1,374 @@
+PAGE 1
+ 
+  
+  
+Department of Artificial Intelligence & Data Science,  
+K. K. Wagh Institute of Engineering Education and Research Nashik  
+  
+  
+A  
+Mini Project Report  
+On  
+SUBMITTED BY  
+ 
+                                          
+ 
+ 
+ 
+ 
+ 
+                
+                     Div: A 
+ 
+GUIDED BY  
+Prof. Pratibha Katware  
+ 
+SUBMITTED TO  
+  
+Department of Artificial Intelligence & Data Science  
+K. K. Wagh Institute of Engineering Education and Research,  
+Nashik  
+ 
+AI and CV Powered Home Security System
+Dushyant Nanwatkar  (41)
+Shreya Nemane  (42)
+Arpita Nikam  (43)
+Arya Pagare  (44)
+Course Code: 2301307A
+Course Name: Internet of Things
+Class: TY
+Academic Year 2026-27
+
+PAGE 2
+INDEX
+Chapter No
+Contents
+Page
+No.
+1.
+Abstract
+3
+2.
+Introduction
+4
+3.
+Scope
+5
+4.
+Requirement Analysis
+6
+5.
+Data Modelling
+7
+6.
+Software Requirements
+8
+7.
+IoT Level
+9
+8.
+GUI
+10
+9.
+Source Code
+11
+10.
+Testing
+12
+11.
+Conclusion
+13
+2
+
+PAGE 3
+CHAPTER 1
+ABSTRACT
+AI and CV Powered Home Security System is a local doorway monitoring and communication
+project built around an Android camera and audio endpoint, a high performance local computer,
+and a homeowner web dashboard. It combines visitor observation, person detection, resident face
+matching, dwell-based warnings, notices, and two-way audio within one local installation.
+The Android client is assumed to send live video and microphone audio over Wi-Fi or an ADB
+tunnel and to receive display text and audio feedback from the dashboard through the host. The
+supplied backend uses FastAPI, WebSockets, PyAV, OpenCV, YOLO11, InsightFace, and
+SQLite. Faster Whisper supports local voice-note transcription after model installation. Events,
+snapshots, enrolled identities, and voice notes are stored locally.
+The physical design includes an HD display, a high resolution high frame rate camera, IR
+presence sensing, proximity measurement, controlled illumination, and a USB interface
+controller. Sensor and lighting integration is proposed; the backend and dashboard are supplied,
+while Android behavior follows the team’s stated client assumption.
+The intended deployment is Level 1 style: one local authority performs analysis, stores data, and
+hosts the application. The separate phone and computer require a composite-node qualification.
+Optional Supabase upload and online Edge TTS must be disabled or replaced for strict offline
+operation. Configured throughput and thresholds are design settings rather than measured results.
+3
+
+PAGE 4
+CHAPTER 2
+INTRODUCTION
+A conventional doorbell announces arrival but provides little information about who is present or
+whether a visitor remains near the entrance. A camera improves visibility, yet continuous manual
+observation is impractical. This project combines local computer vision with interaction and
+event storage to support homeowner review.
+The phone supplies the doorway camera, microphone, display, and speaker. The host decodes
+video, detects persons using YOLO11, compares face embeddings through InsightFace, applies a
+dwell threshold, and delivers recent frames and alerts to the browser. OpenCV performs image
+handling, overlays, and JPEG encoding. These roles distinguish person detection from identity
+recognition.
+Recognized residents can receive a display greeting. An unknown track that remains beyond the
+configured threshold may produce a warning and snapshot. A homeowner can inspect the stream,
+send a notice, or talk through the phone speaker. An unknown detection is a review cue and does
+not prove intrusion.
+Local processing reduces reliance on remote video analysis and keeps biometric records within
+the premises. The Level 1 placement is examined separately in Chapter 7. Powerful GPU
+hardware supports the workload but does not by itself determine an IoT deployment level.
+The main objectives are live monitoring, enrolled-face comparison, reliable local records,
+bidirectional feedback, and practical physical integration. The report distinguishes implemented
+software, assumed Android behavior, proposed hardware additions, and tests still needed to
+establish performance.
+4
+
+PAGE 5
+CHAPTER 3
+SCOPE
+3.1 Functional Scope
+1. Receive live camera and audio input from the assumed Android endpoint over local Wi-Fi or
+ADB.
+2. Detect persons, compare resident faces, track approximate dwell time, and generate event
+records with available snapshots.
+3. Provide enrollment, notices, camera commands, kiosk mirroring, telemetry, and two-way
+audio through the dashboard.
+4. Persist identities, events, voice notes, telemetry, and notices in SQLite with media files stored
+locally.
+5. Extend physical sensing with IR and distance inputs and a host-controlled lamp through a
+proposed USB controller.
+3.2 System Boundary
+The supplied folder contains the Python host, static dashboard, communication specification, and
+mock-phone utility. Android source is not supplied. Its capture, text display, and speaker
+playback behavior is assumed as directed by the team. Sensor firmware, lamp wiring, and
+backend sensor integration remain proposed.
+The intended Level 1 style scope has one local decision and storage authority. Continuous video
+archiving, cloud-dependent monitoring, validated anti-spoofing, and physical door unlocking are
+outside the established implementation. No recognition accuracy, achieved frame rate, or
+completed hardware validation is claimed.
+5
+
+PAGE 6
+CHAPTER 4
+REQUIREMENT ANALYSIS
+4.1 Functional Requirements
+1. Accept video/audio feeds and route text, commands, and playback audio to the phone.
+2. Enroll residents, run person detection and face comparison, and show recent annotated frames.
+3. Apply the configured three-second unknown dwell rule and store relevant events and media.
+4. Provide notices, intercom, voice notes, telemetry, history, and connectivity status.
+5. Integrate proposed IR, proximity, and lighting control with validated sensor messages.
+4.2 Non-Functional Requirements
+Keep frame age low through decoupled network and inference workers. Recover from
+disconnected endpoints, bound queues and inputs, protect biometric data, restrict administrative
+access, and maintain database/media backups. Browser microphone access on LAN may need
+trusted HTTPS. Local hosting alone does not provide authentication.
+4.3 Hardware Requirements
+Provide an HD display, camera with suitable high resolution and frame rate, IR presence sensor,
+short-range proximity sensor, diffuse low voltage light and driver, USB interface controller,
+microphone, speaker, regulated supplies, mounting, and USB or local Wi-Fi connectivity. The
+configured host target is Ryzen 7 250, 32 GB DDR5, and RTX 5060 with 8 GB VRAM. Actual
+hardware capability requires verification.
+6
+
+PAGE 7
+CHAPTER 5
+DATA MODELLING
+5.1 Entity Structure and Relational Model
+Entity
+Primary key and principal attributes
+enrolled_faces
+id PK; name; role; custom_greeting; embedding_json; photo_path; created_at;
+updated_at
+security_events
+id PK; event_type; severity; message; snapshot_path; metadata_json;
+synced_to_cloud; created_at
+voice_notes
+id PK; audio_path; transcript; duration_sec; sender_name; created_at
+device_telemetry
+id PK; battery_pct; is_charging; temp_c; adb_connected; created_at
+kiosk_notices
+id PK; text; active; created_at
+These five implemented entities are independent: the ORM declares no foreign keys. Event
+metadata can hold contextual references, but these are not enforced relationships. Proposed
+device_id, resident_id, and voice_note_id links would require explicit schema changes.
+5.2 Normalization and Connectivity
+Single-column surrogate keys avoid partial dependencies. Third normal form depends on verified
+business dependencies rather than the ORM alone. Embeddings and metadata are internally
+structured JSON stored as text; a strict atomic-field interpretation needs qualification. Frequently
+queried metadata should become typed columns.
+SQLAlchemy async sessions use aiosqlite for local SQLite connectivity. Media paths refer to
+local files, so backups must include both. Startup create_all creates missing tables; it is not a full
+schema migration mechanism.
+7
+
+PAGE 8
+CHAPTER 6
+SOFTWARE REQUIREMENTS
+6.1 Front End
+The homeowner dashboard uses HTML, CSS, and JavaScript. REST handles requests and
+WebSockets carry live media and events. The assumed Android application captures camera and
+microphone input, displays notices, and plays return audio. Required permissions and playback
+behavior need client validation.
+6.2 Back End
+Technology
+Responsibility
+Python FastAPI Uvicorn
+Local API, WebSocket services, request validation, and application
+lifecycle.
+PyAV and OpenCV
+H.264 decoding, image conversion, overlays, JPEG encoding.
+YOLO11 and InsightFace
+Person detection and normalized 512-dimensional face comparison.
+ONNX Runtime GPU
+Execution provider for face analysis where supported.
+Faster Whisper
+Local voice-note transcription; configured small model.
+SQLAlchemy aiosqlite
+Async access to local SQLite records.
+6.3 Database and Runtime Setup
+Install compatible Python packages, GPU drivers, model assets, and Android platform tools. The
+database URL defaults to local sentinel.db. Requirements specify minimum versions rather than a
+frozen environment; record actual installed versions. Preload all models before an offline
+demonstration.
+Supabase synchronization is optional. Edge TTS is an online speech client. Disable cloud sync
+and use offline speech or prerecorded audio for the local target; use local font assets or system
+fallbacks.
+8
+
+PAGE 9
+CHAPTER 7
+IOT LEVEL
+IoT Level 1: A Level 1 node performs sensing or actuation, stores data, performs analysis, and
+hosts the application. This project maps those roles to one logical local installation with a single
+processing authority.
+Local
+Cloud
+App
+Local homeowner web dashboard
+REST and WebSocket services
+FastAPI HTTP WS on port 8000
+Controller service
+Python OpenCV YOLO11 InsightFace
+Resource
+Frames audio embeddings GPIO bridge
+Device
+Host with phone and sensor endpoints
+REST / WebSocket communication
+SQLite database
+Not used by the
+intended local stack
+Monitoring node: local computer performs analysis, stores records, and hosts the application. Phone endpoints
+provide camera, microphone, screen, and speaker; proposed IR/proximity inputs and lighting use a USB
+controller.
+Qualification: A phone and computer are physically separate devices, so Level 1 is a composite-node
+interpretation rather than a literal single-device design. GPU vision is also more intensive than typical simple
+Level 1 examples. Fully local operation requires disabled cloud sync, preloaded models, and offline speech
+instead of Edge TTS.
+9
+
+PAGE 10
+CHAPTER 8
+GRAPHICAL USER INTERFACE
+Technology Used: HTML, CSS, and JavaScript served locally by FastAPI. The Android kiosk is
+an assumed capture and feedback client.
+Functionality: Monitor camera and kiosk mirror, inspect events and snapshots, enroll residents, send notices,
+view telemetry, and use intercom. The displayed view is rendered from supplied static source, with placeholder
+feeds rather than a live system test.
+Feedback: Dashboard text travels to the host, which sends a phone display command and optional generated
+speech. Browser microphone audio is returned to the phone speaker. Local speech is required for a strict offline
+demonstration.
+10
+
+PAGE 11
+CHAPTER 9
+SOURCE CODE
+File
+Responsibility
+main.py
+FastAPI routes, REST requests, WebSockets, dashboard and event
+distribution.
+sbmp_server.py
+Binary protocol parsing, media dispatch, phone commands, ADB tunnel
+checks.
+gpu_pipeline.py
+YOLO prediction, face matching, centroid association, dwell rules, overlays
+and speech.
+ring_buffer.py
+Thread-safe recent raw frames and latest annotated image cache.
+models.py database.py
+Five ORM entities, sessions, records, embedding loading.
+config.py
+Model names, ports, paths, thresholds and target rates.
+static files
+Dashboard HTML, CSS and JavaScript.
+cloud_sync.py
+Optional Supabase queue; disabled for local target.
+9.1 Communication and Processing
+SBMP uses TCP port 9000 with a 9-byte big-endian header: channel byte, 32-bit timestamp, and 32-bit payload
+length. Channels 0x01/0x02 carry video/audio; 0x03 carries mirror or notifications; 0x04 returns audio; 0x05
+sends UI commands; 0x06 carries triggers and telemetry. ADB reverse forwards the phone TCP connection to
+the host.
+The host decodes frames into a buffer of capacity 20. The AI worker consumes recent frames at a configured
+12 Hz, while the dashboard broadcast targets 30 Hz and may repeat annotations. Face cosine threshold is 0.48
+and YOLO confidence is 0.45. These values need calibration and runtime verification.
+11
+
+PAGE 12
+CHAPTER 10
+TESTING
+The following plan defines required validation. Executed integration results, measured
+recognition accuracy, and hardware acceptance are not asserted.
+Test area
+Validation and evidence
+Transport
+Fragmented packets, malformed lengths, reconnect and Wi-Fi/ADB paths.
+Video and analysis
+Measure unique frame rate, frame age, latency, dropped frames, GPU memory
+and temperature.
+Recognition and dwell
+Test enrolled/unknown faces, lighting, occlusion, crossing people and repeated
+warnings.
+Intercom and notices
+Confirm phone text, bidirectional audio, browser permissions, echo and
+playback format.
+Storage
+Restart host; verify database rows and referenced media remain accessible.
+Sensors and light
+Test presence debounce, distance hysteresis, stale data, lamp timeout and
+disconnect defaults.
+Offline operation
+Disconnect Internet, retain LAN/USB, disable Supabase, preload models, and
+use local speech.
+Record hardware, package/model versions, scene conditions, sample counts, thresholds, actual outcomes, and
+pass/fail for each run. Centroid tracking may switch identities; face-prioritized detection assembly can omit a
+person without a visible face in mixed scenes. Reprocessing the same latest frame is possible, so throughput
+must include frame freshness.
+12
+
+PAGE 13
+CHAPTER 11
+CONCLUSION
+The AI and CV Powered Home Security System combines local vision, visitor interaction, event
+storage, and dashboard control. The supplied backend and web interface establish a practical
+foundation; the Android endpoint is assumed to stream video/audio and receive text and speaker
+feedback. IR and proximity sensing, lamp control, and physical wiring complete the proposed
+hardware design once integrated and tested.
+One local computer owns analysis, persistence, and application services. This supports a Level 1
+style explanation when the installation is treated as one composite node, while the phone and host
+remain separate physical devices. The design should therefore state its classification boundary
+instead of treating locality alone as sufficient.
+Fully local operation requires disabled cloud synchronization, installed model assets, local UI
+resources, and offline speech. Recognition thresholds, frame rates, latency, and sensor behavior
+require measurement on the actual installation. Future work should prioritize sensor firmware,
+secure access, robust multi-person tracking, explicit migrations, retention, and repeatable
+validation.
+References
+[1] Bahga and Madisetti. Internet of Things A Hands On Approach, 2014. Level 1 deployment taxonomy.
+[2] edge-tts official repository: https://github.com/rany2/edge-tts . Online speech client.
+[3] Local SENTINEL project source, configuration, dashboard, and Android communication specification.
+Reviewed 29 October 2026.
+13

@@ -1,0 +1,252 @@
+PAGE 1
+1 
+ 
+K. K. Wagh Institute of Engineering Education and Research Nashik 
+Department of Artificial Intelligence and Data Science 
+A 
+Mini Project Report On 
+"PredictX" 
+Predictive Maintenance And Sensor Anomaly Monitoring System 
+SUBMITTED BY 
+Vivek Hudekar (27) 
+Akshata Jadhav (28) 
+Tanvi Jadhav (29) 
+Shivraj Madheshiya (38) 
+ 
+ 
+Course Code: 2311307A      Course Name: Internet Of Things Lab 
+Class: TY Div: A 
+GUIDED BY 
+Prof. Pratibha Katware 
+SUBMITTED TO 
+K. K. Wagh Institute of Engineering Education and Research, Nashik 
+Department of Artificial Intelligence & Data Science 
+Academic Year 2025-2026 
+ 
+ 
+ 
+
+PAGE 2
+2 
+ 
+Index 
+1. Purpose and Requirements ....................................................................................... 3 
+2. Process Specification ................................................................................................ 4 
+3. Domain Model Specification .................................................................................... 5 
+4. Information Model Specification .............................................................................. 6 
+5. Service Specification ................................................................................................ 7 
+6. IoT Level Specification ............................................................................................ 8 
+7. Functional View Specification ................................................................................. 9 
+8. Operational View Specification .............................................................................. 10 
+9. Device and Component Integration ........................................................................ 11 
+10. Application Development ..................................................................................... 13 
+
+PAGE 3
+3 
+1. Purpose and Requirements 
+• Purpose: A predictive-maintenance system that monitors the vibration and 
+sound of a machine remotely, detects abnormal behaviour using machine 
+learning and shows machine health on a web dashboard. 
+• Behaviour: An ESP32 node reads the MPU6050 accelerometer/gyroscope and 
+the INMP441 microphone, computes RMS values over a one-second window 
+and publishes them every second over MQTT. The backend stores each record 
+in MySQL and an Isolation Forest and a Random Forest classifier flag 
+anomalies with a probability score. The dataset also covers ACS712 current, 
+DHT22 temperature and humidity fields. 
+• System management requirement: The system should provide remote 
+monitoring, with manual data fetch and start/stop control of backend data 
+collection from the dashboard. 
+• Data analysis requirement: Data analysis is done by the backend ML service 
+(scikit-learn) using models trained on a labelled sensor dataset of 200 records. 
+• Application deployment requirement: Backend, database and dashboard are 
+deployed locally; the MQTT broker is a cloud service, so data is accessible 
+remotely. 
+• Security requirement: Database credentials are kept in a private .env file and 
+a unique MQTT topic is used. User login and an authenticated broker are 
+planned for non-demo use. 
+
+PAGE 4
+4 
+2. Process Specification 
+ 
+Process specification for PredictX monitoring system 
+
+PAGE 5
+5 
+3. Domain Model Specification 
+Physical Entity: Industrial machine / motor. 
+Virtual Entity: Machine (digital representation of its vibration, sound and health 
+state). 
+Devices: Computing device (ESP32 DevKit), MPU6050 accelerometer and gyroscope, 
+INMP441 microphone. 
+Service: MQTT telemetry service and REST API service. 
+ 
+Domain Model specification for PredictX monitoring system 
+
+PAGE 6
+6 
+4. Information Model Specification 
+ 
+Information Model specification for PredictX monitoring system 
+
+PAGE 7
+7 
+5. Service Specification 
+Services provided by the system are: 
+1. Machine vibration (accelerometer RMS) is measured and stored in the 
+database. 
+2. Sound level (microphone RMS) is measured and stored in the database. 
+3. Telemetry is analysed by ML models and an anomaly flag with probability is 
+generated. 
+4. Anomalies and machine status are shown on the dashboard. 
+Communication service 
+Field 
+Specification 
+Name 
+communication 
+Type 
+MQTT (publish) 
+Input 
+accel X/Y/Z RMS, sound RMS 
+Output 
+JSON message on predictx/telemetry 
+Schedule 
+Every 1 second 
+Anomaly detection service 
+Field 
+Specification 
+Name 
+anomaly detection 
+Endpoint 
+/api/predictions (REST, FastAPI) 
+Input 
+Vibration, gyro, sound, ACS712, temperature, humidity 
+Output 
+anomaly flag, anomaly probability 
+Training 
+POST /api/models/train 
+
+PAGE 8
+8 
+6. IoT Level Specification 
+This is an IoT level 3 system. The monitoring node consists of an ESP32 with an 
+MPU6050 sensor measuring machine vibration and an INMP441 microphone 
+measuring sound. The sensor data is sent over Wi-Fi to an MQTT broker in the cloud. 
+A FastAPI backend subscribes to the topic, stores every record in MySQL and runs the 
+Isolation Forest and Random Forest models to check whether the machine behaviour 
+is normal. The user monitors the machine from a React web dashboard that fetches data 
+from the backend through REST APIs. 
+ 
+IoT level specification for PredictX monitoring system 
+
+PAGE 9
+9 
+7. Functional View Specification 
+ 
+Functional view specification for PredictX monitoring system 
+
+PAGE 10
+10 
+8. Operational View Specification 
+• Devices: Computing device (ESP32 DevKit), MPU6050, INMP441. 
+• Communication Protocols: Link-layer 802.11, Transport TCP, Application 
+MQTT and HTTP. 
+• Services: Communication service hosted on device (Arduino C++); anomaly 
+detection service hosted on backend (Python). 
+• Application: React (Vite) web dashboard; FastAPI (Uvicorn) application 
+server; MySQL database server. 
+• Security: Database user/password and unique MQTT topic; token-based login 
+planned. 
+• Management: Application management: dashboard and backend; Database 
+management: schema.sql and migrations; Device management: ESP32 
+firmware. 
+ 
+Operational view specification 
+
+PAGE 11
+11 
+9. Device and Component Integration 
+ 
+Circuit connection diagram for PredictX monitoring system 
+Module pin 
+ESP32 pin 
+Module 
+VCC / VDD 
+3V3 
+MPU6050 / INMP441 
+GND, L/R 
+GND 
+MPU6050 / INMP441 
+SDA 
+GPIO 21 
+MPU6050 
+SCL 
+GPIO 22 
+MPU6050 
+SCK / BCLK 
+GPIO 26 
+INMP441 
+WS / LRCL 
+GPIO 25 
+INMP441 
+SD / DOUT 
+GPIO 33 
+INMP441 
+ 
+1. ESP32 DevKit 
+The ESP32 is a low-cost microcontroller with a dual-core processor and built-in Wi-Fi 
+(802.11 b/g/n) and Bluetooth. It reads both sensors, computes RMS values, and 
+publishes the readings over MQTT. It operates at 3.3 V logic and is programmed using 
+the Arduino IDE. 
+2. MPU6050 
+The MPU6050 is a MEMS module with a 3-axis accelerometer and a 3-axis gyroscope, 
+a 16-bit ADC and a built-in temperature sensor. It communicates over I2C (SDA GPIO 
+21, SCL GPIO 22). The firmware samples it at about 100 Hz and computes the RMS 
+acceleration of each axis (in m/s²) once per second to represent machine vibration. 
+
+PAGE 12
+12 
+3. INMP441 Microphone 
+The INMP441 is a digital omnidirectional MEMS microphone with an I2S output. The 
+ESP32 reads 1024 samples at 16 kHz through its I2S driver and computes the RMS 
+sound level, which indicates abnormal noise from the machine. The value is raw PCM 
+RMS and needs calibration to compare it with the training dataset. 
+4. ACS712 and DHT22 (dataset fields) 
+The training dataset and database also include ACS712 current sensor readings and 
+DHT22 temperature and humidity. The current firmware does not publish these, but 
+the backend accepts them, so they can be added without changing the software. 
+5. MQTT Broker and Backend 
+The ESP32 publishes to broker.hivemq.com on port 1883. The FastAPI backend 
+subscribes to the topic, saves each reading in MySQL and runs the ML prediction. 
+
+PAGE 13
+13 
+10. Application Development 
+1. Overview page: Shows the latest sensor readings, sensor performance charts, 
+system status (MQTT broker, MySQL, latest packet) and Maintenance AI status. The 
+Fetch data button refreshes the dashboard. 
+ 
+
+PAGE 14
+14 
+2. Live telemetry page: Shows live charts of vibration, sound and other sensor values 
+from the recent MQTT records. 
+ 
+
+PAGE 15
+15 
+3. Maintenance AI page: Used to train or retrain the models. It shows accuracy, 
+precision, recall and F1 score, the number of anomalies in the last 120 predictions and 
+the recent predictions with anomaly probability. 
+ 
+
+PAGE 16
+16 
+4. Data records page: Shows the stored telemetry in a table with time, device, 
+temperature, humidity, acceleration, sound, ACS712 and gyroscope values. The data 
+can be exported as CSV. 
+ 
+ 
+Technology stack: Frontend – React 18, Vite, Recharts; Backend – Python FastAPI, 
+paho-mqtt; Database – MySQL; ML – scikit-learn (Isolation Forest with 200 trees, 
+Random Forest with 300 trees); Firmware – ESP32 Arduino C++ with PubSubClient. 

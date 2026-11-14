@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SENTINEL AI - Autonomous Doorbell Command Center</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="theme-dark">
+  <!-- Toast Container for Android Notifications & Security Alerts -->
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+  <!-- Snapshot Modal -->
+  <div id="snapshot-modal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <span class="modal-badge alert-badge">SECURITY SNAPSHOT</span>
+          <h3 id="modal-title">Event Snapshot</h3>
+        </div>
+        <button id="modal-close-btn" class="icon-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <img id="modal-snapshot-img" src="" alt="Intruder Snapshot" class="snapshot-preview-img">
+        <div id="modal-meta" class="modal-meta-grid"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Face Enrollment Modal -->
+  <div id="enroll-modal" class="modal-backdrop hidden">
+    <div class="modal-card modal-enroll">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <span class="modal-badge primary-badge">INSIGHTFACE 512-D</span>
+          <h3>Enroll New Resident / VIP</h3>
+        </div>
+        <button id="enroll-close-btn" class="icon-btn">&times;</button>
+      </div>
+      <form id="enroll-form" class="modal-body">
+        <div class="form-group">
+          <label for="enroll-name">Full Name</label>
+          <input type="text" id="enroll-name" required placeholder="e.g. Dushyant Sharma">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="enroll-role">Access Role</label>
+            <select id="enroll-role">
+              <option value="Family">Family Member</option>
+              <option value="Resident">Resident</option>
+              <option value="VIP">VIP Guest</option>
+              <option value="Delivery">Delivery Personnel</option>
+              <option value="Staff">Service Staff</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="enroll-greeting">Custom Neural Voice Greeting</label>
+            <input type="text" id="enroll-greeting" placeholder="e.g. Welcome home, Dushyant!">
+          </div>
+        </div>
+
+        <!-- Enrollment Source Tabs -->
+        <div class="enroll-tabs">
+          <button type="button" class="tab-btn active" id="tab-camera-btn">📷 Live Camera Capture</button>
+          <button type="button" class="tab-btn" id="tab-upload-btn">📁 Upload Photo Files</button>
+        </div>
+
+        <!-- Tab 1: Live Camera Enrollment -->
+        <div id="enroll-camera-panel" class="camera-capture-deck">
+          <div class="camera-preview-wrapper">
+            <video id="webcam-preview" autoplay playsinline class="webcam-preview hidden"></video>
+            <img id="camera-captured-preview" src="" alt="Captured Face" class="camera-captured-img hidden">
+            <div id="camera-placeholder-msg" class="camera-placeholder">
+              <p>Choose an option below to capture face directly from camera:</p>
+            </div>
+            <canvas id="webcam-canvas" class="hidden"></canvas>
+          </div>
+          <div class="camera-actions-row">
+            <button type="button" id="btn-snap-doorbell" class="btn btn-secondary btn-sm" title="Capture person standing at doorbell camera">
+              ⚡ Capture from Doorbell Stream
+            </button>
+            <button type="button" id="btn-start-webcam" class="btn btn-secondary btn-sm" title="Open laptop or device camera">
+              🎥 Open Device Webcam
+            </button>
+            <button type="button" id="btn-capture-webcam" class="btn btn-primary btn-sm hidden" title="Take snapshot from webcam">
+              📸 Take Snapshot
+            </button>
+          </div>
+          <div id="camera-status-msg" class="camera-status-text"></div>
+        </div>
+
+        <!-- Tab 2: File Upload (Fallback) -->
+        <div id="enroll-upload-panel" class="form-group hidden">
+          <label>Photos (1 to 5 images for 512-D Embedding Extraction)</label>
+          <div id="drop-zone" class="drop-zone">
+            <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+            </svg>
+            <p>Drag & drop face photos or <span class="highlight">browse</span></p>
+            <input type="file" id="enroll-photos" multiple accept="image/*" class="file-input">
+          </div>
+          <div id="file-preview-list" class="file-preview-list"></div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" id="enroll-cancel-btn" class="btn btn-secondary">Cancel</button>
+          <button type="submit" id="enroll-submit-btn" class="btn btn-primary">
+            <span class="btn-text">Extract 512-D Embedding & Save</span>
+            <span class="spinner hidden"></span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- App Wrapper -->
+  <div class="app-layout">
+    <!-- Top Navigation Header -->
+    <header class="app-header">
+      <div class="header-left">
+        <div class="logo-group">
+          <div class="logo-shield">
+            <div class="shield-pulse"></div>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+          </div>
+          <div class="brand-text">
+            <h1>SENTINEL <span>AI</span></h1>
+            <span class="brand-sub">EDGE VISION ARCHITECTURE</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="header-center hardware-badges">
+        <div class="hw-badge" title="Host Computing Core">
+          <span class="hw-icon cpu-icon"></span>
+          <span class="hw-label">AMD RYZEN 7 250</span>
+        </div>
+        <div class="hw-badge active-gpu" title="AI Acceleration Engine">
+          <span class="hw-icon gpu-icon"></span>
+          <span class="hw-label">RTX 5060 (8GB)</span>
+          <span class="hw-pill" id="ai-fps-badge">12.4 FPS</span>
+        </div>
+        <div class="hw-badge" id="lan-ip-badge" title="Connect Android Kiosk over LAN / Wi-Fi">
+          <span class="status-dot green"></span>
+          <span class="hw-label" id="lan-ip-text">LAN: 10.220.59.55:8000</span>
+        </div>
+        <div class="hw-badge" id="adb-tunnel-badge" title="Phone Hardware Bridge">
+          <span class="status-dot green"></span>
+          <span class="hw-label">ADB REVERSE :9000</span>
+        </div>
+        <div class="hw-badge" id="phone-battery-badge" title="Phone Battery Telemetry">
+          <span class="hw-label" id="phone-battery-text">BATTERY: --%</span>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <div class="stream-status">
+          <div class="pulse-indicator live" id="stream-indicator"></div>
+          <span id="stream-status-text">LIVE FEED</span>
+        </div>
+        <div class="clock-display" id="clock-display">00:00:00</div>
+      </div>
+    </header>
+
+    <!-- Main Content Grid -->
+    <main class="main-grid">
+      <!-- Left Column: Primary Video Feed & Controls -->
+      <section class="viewport-column">
+        <!-- Live Camera Monitor -->
+        <div class="glass-card monitor-card">
+          <div class="card-header">
+            <div class="header-title">
+              <span class="live-tag">30 FPS • H.264 NAL</span>
+              <h2>Doorway Camera Feed (HUD Overlay)</h2>
+            </div>
+            <div class="header-tools">
+              <button id="btn-snapshot" class="btn-icon-label" title="Capture instantaneous snapshot">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                <span>Snapshot</span>
+              </button>
+              <button id="btn-toggle-camera" class="btn-icon-label" title="Switch between Front and Back camera lens">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                <span id="camera-lens-label">Lens: Back</span>
+              </button>
+              <button id="btn-fullscreen" class="icon-btn" title="Toggle Fullscreen">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="video-container" id="video-container">
+            <!-- Canvas or Img Stream -->
+            <img id="camera-stream" src="/static/placeholder_camera.jpg" alt="Live Doorway Stream" class="live-stream-img">
+            <div class="hud-overlay-telemetry">
+              <span class="hud-item" id="hud-res">1920x1080</span>
+              <span class="hud-item" id="hud-decoder-fps">FPS: 30.0</span>
+              <span class="hud-item" id="hud-threat-level">THREAT: NORMAL</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Two-Way Intercom & Quick Voice Deck -->
+        <div class="glass-card intercom-card">
+          <div class="card-header">
+            <div class="header-title">
+              <span class="card-pill audio-pill">16kHz 16-BIT PCM</span>
+              <h3>Bidirectional Doorway Intercom</h3>
+            </div>
+            <div class="audio-toggles">
+              <button id="btn-listen-mic" class="btn btn-listen active">
+                <span class="mic-status-dot"></span>
+                <span id="listen-text">Listening to Doorway Mic</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="intercom-controls">
+            <!-- Hold to talk push button -->
+            <div class="talk-button-wrapper">
+              <button id="btn-hold-to-talk" class="talk-btn" title="Click and hold to speak through phone speaker">
+                <div class="talk-ring"></div>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                  <line x1="12" y1="19" x2="12" y2="23"/>
+                  <line x1="8" y1="23" x2="16" y2="23"/>
+                </svg>
+                <span class="talk-btn-text">HOLD TO TALK</span>
+              </button>
+              <span class="talk-hint">Hold spacebar or click to speak</span>
+            </div>
+
+            <!-- Quick Neural TTS Broadcast Phrases -->
+            <div class="quick-tts-deck">
+              <span class="deck-title">Quick Neural Voice Broadcasts (Edge-TTS):</span>
+              <div class="quick-chips">
+                <button class="chip-btn" data-tts="Please leave the package at the front porch. Thank you!">📦 "Leave package at porch"</button>
+                <button class="chip-btn" data-tts="One moment, I am coming to the door now.">🚪 "Coming to door now"</button>
+                <button class="chip-btn" data-tts="No solicitors or unexpected visitors, please. Have a good day.">🚫 "No solicitors"</button>
+                <button class="chip-btn" data-tts="Who is it, and what is your business?">❓ "Who is it?"</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Middle Column: Phone Screen Mirror & Kiosk Notice Controls -->
+      <section class="kiosk-column">
+        <!-- Live Phone Display Mirror -->
+        <div class="glass-card kiosk-card">
+          <div class="card-header">
+            <div class="header-title">
+              <span class="card-pill screen-pill">CHANNEL 0x03</span>
+              <h3>Doorbell Screen Mirror</h3>
+            </div>
+            <span class="phone-badge" id="phone-temp-badge">31°C</span>
+          </div>
+
+          <div class="phone-frame-wrapper">
+            <div class="phone-bezel">
+              <div class="phone-notch"></div>
+              <img id="kiosk-screen-img" src="/static/kiosk_placeholder.jpg" alt="Doorbell Screen" class="kiosk-screen-img">
+              <div class="phone-home-indicator"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Custom Notice & Emergency Siren Deck -->
+        <div class="glass-card notice-card">
+          <div class="card-header">
+            <div class="header-title">
+              <span class="card-pill notice-pill">CHANNEL 0x05</span>
+              <h3>Doorbell Kiosk Notice</h3>
+            </div>
+          </div>
+
+          <form id="notice-form" class="notice-form">
+            <textarea id="notice-input" rows="2" placeholder="Type notice to display on the doorbell phone screen..."></textarea>
+            <div class="notice-footer">
+              <label class="checkbox-label">
+                <input type="checkbox" id="notice-tts" checked>
+                <span>Also speak aloud via Neural TTS</span>
+              </label>
+              <button type="submit" class="btn btn-primary btn-sm">Push to Phone</button>
+            </div>
+          </form>
+
+          <div class="emergency-deck">
+            <button id="btn-emergency-siren" class="btn btn-danger-siren">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              <span id="siren-text">TRIGGER EMERGENCY SIREN</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Column: Face ID Residents & Real-time Security Event Feed -->
+      <section class="side-column">
+        <!-- Enrolled Face Database -->
+        <div class="glass-card faces-card">
+          <div class="card-header">
+            <div class="header-title">
+              <span class="card-pill face-pill">FACE ID</span>
+              <h3>Enrolled Residents</h3>
+            </div>
+            <button id="btn-open-enroll" class="btn btn-secondary btn-sm">+ Enroll Face</button>
+          </div>
+
+          <div id="faces-list" class="faces-scroll-list">
+            <div class="empty-state">Loading enrolled faces...</div>
+          </div>
+        </div>
+
+        <!-- Live Security Event Feed & Voice Notes -->
+        <div class="glass-card events-card">
+          <div class="card-header">
+            <div class="header-title">
+              <span class="card-pill alert-pill">LIVE AUDIT</span>
+              <h3>Security Events & Voice Notes</h3>
+            </div>
+            <div class="filter-group">
+              <select id="event-filter">
+                <option value="">All Events</option>
+                <option value="INTRUDER_ALERT">Intruder Alerts</option>
+                <option value="FACE_RECOGNIZED">Face Recognized</option>
+                <option value="DOORBELL_RING">Doorbell Rings</option>
+                <option value="VOICE_NOTE">Voice Notes</option>
+                <option value="NOTIFICATION_INTERCEPTED">Phone Notifications</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="events-stream" class="events-scroll-list">
+            <div class="empty-state">Listening for real-time security events...</div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
